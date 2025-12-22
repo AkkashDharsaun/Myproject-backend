@@ -1,30 +1,64 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
+from datetime import datetime, timedelta
+import os
+import razorpay
+from dotenv import load_dotenv
 
 from database import get_db
 from models import College
-from schemas import LoginData, CollegeRegister
+from schemas import LoginData, CollegeRegister, ForgetPassword
+
 from auth import hash_password, verify_password
 
-router = APIRouter(prefix="", tags=["Auth"])  # later /auth use panna mudiyum
+load_dotenv()
+
+router = APIRouter(prefix="", tags=["Auth"])
+
+# 🔐 Razorpay client (SECRET KEY HERE)
+client = razorpay.Client(auth=(
+    os.getenv("RAZORPAY_KEY_ID"),
+    os.getenv("RAZORPAY_KEY_SECRET")
+))
 
 
-# ================= REGISTER =================
+# ================= CREATE ORDER =================
+@router.post("/create-order")
+def create_order():
+    order = client.order.create({
+        "amount": 10,  # ₹1 = 100 paise
+        "currency": "INR",
+        "payment_capture": 1
+    })
+    return {
+        "orderId": order["id"],
+        "amount": order["amount"]
+    }
+
+
+# ================= VERIFY PAYMENT =================
+@router.post("/verify-payment")
+def verify_payment(data: dict):
+    try:
+        client.utility.verify_payment_signature({
+            "razorpay_order_id": data["razorpay_order_id"],
+            "razorpay_payment_id": data["razorpay_payment_id"],
+            "razorpay_signature": data["razorpay_signature"]
+        })
+        return {"status": "verified"}
+    except:
+        raise HTTPException(status_code=400, detail="Payment verification failed")
+
+
+# ================= REGISTER COLLEGE =================
 @router.post("/registerCollege")
 def register_college(data: CollegeRegister, db: Session = Depends(get_db)):
 
-    # Duplicate email check
     if db.query(College).filter(College.collegeEmail == data.collegeEmail).first():
-        raise HTTPException(status_code=400, detail="Email is Already Registered")
+        raise HTTPException(status_code=400, detail="Email already registered")
 
-    # Duplicate phone number check
     if db.query(College).filter(College.contactNumber == data.contactNumber).first():
         raise HTTPException(status_code=400, detail="Phone number already exists")
-
-    # Same password check
-    hashed_password = hash_password(data.password)
-    if db.query(College).filter(College.password == hashed_password).first():
-        raise HTTPException(status_code=400, detail="Give a different strong password")
 
     college = College(
         collegeId=data.collegeId,
@@ -36,46 +70,19 @@ def register_college(data: CollegeRegister, db: Session = Depends(get_db)):
         postalCode=data.postalCode,
         collegeEmail=data.collegeEmail,
         contactNumber=str(data.contactNumber),
-        password=hashed_password,
+        password=hash_password(data.password),
+
+        isActive=True,
+        planType="YEARLY",
+        planExpiry=datetime.now() + timedelta(days=365),
+        paymentId=data.paymentId
     )
 
     db.add(college)
     db.commit()
+    db.refresh(college)
 
-    return {"message": "College registered successfully"}
-
-
-# ================= LOGIN =================
-@router.post("/DashboardLogin")
-def dashboard_login(data: LoginData, db: Session = Depends(get_db)):
-
-    college = (
-        db.query(College).filter(College.collegeEmail == data.collegeEmail).first()
-    )
-
-    if not college or not verify_password(data.password, college.password):
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    return {"message": "Login successful"}
-
-
-# ================= FORGET PASSWORD =================
-@router.post("/forget-password")
-def forget_password(data: LoginData, db: Session = Depends(get_db)):
-    college = (
-        db.query(College).filter(College.collegeEmail == data.collegeEmail).first()
-    )
-
-    if not college:
-        raise HTTPException(status_code=404, detail="College not registered")
-
-    if not is_strong_password(data.password):
-        raise HTTPException(
-            status_code=400,
-            detail="Password must contain uppercase, lowercase, number & symbol",
-        )
-
-    college.password = hash_password(data.password)
-    db.commit()
-
-    return {"message": "Password reset successful"}
+    return {
+        "message": "Payment verified & College registered",
+        "planExpiry": college.planExpiry
+    }
