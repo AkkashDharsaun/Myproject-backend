@@ -14,16 +14,19 @@ Base.metadata.create_all(bind=engine)
 
 app = FastAPI()
 
+frontend_url = os.getenv("FRONTEND_URL")
+
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        os.getenv("FRONTEND_URL"),
-        "http://localhost:5173" 
+        frontend_url,
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Routes
 app.include_router(auth_router)

@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Boolean, DateTime
+from sqlalchemy import Column, String, Boolean, DateTime,Integer
 from database import Base
 
 class College(Base):
@@ -12,18 +12,18 @@ class College(Base):
     country = Column(String)
     stateOrProvince = Column(String)
     city = Column(String)
-    postalCode = Column(String)
+    counsellingcode = Column(Integer)
 
     collegeEmail = Column(String, unique=True, index=True, nullable=False)
     contactNumber = Column(String, unique=True, nullable=False)
-
+    is_registered = Column(Boolean, default=False)
     password = Column(String, nullable=False)
 
-    # 🔐 PAYMENT FIELDS
-    isActive = Column(Boolean, default=False)
-    planType = Column(String, default="YEARLY")
-    planExpiry = Column(DateTime, nullable=True)
-    paymentId = Column(String, nullable=True)
+    # 💳 Payment fields
+    payment_id = Column(String, unique=True)
+    is_active = Column(Boolean, default=False)
+    plan_type = Column(String)
+    plan_expiry = Column(DateTime)  
 
 
 

@@ -1,5 +1,5 @@
 from pydantic import BaseModel, EmailStr
-
+from datetime import datetime
 
 class LoginData(BaseModel):
     collegeEmail: EmailStr
@@ -13,10 +13,15 @@ class CollegeRegister(BaseModel):
     country: str
     stateOrProvince: str
     city: str
-    postalCode: str
+    counsellingcode: int
     collegeEmail: EmailStr
     contactNumber: str
     password: str
+    is_registered: bool = True
+    paymentId: str
+    isActive: bool
+    planType: str
+    planExpiry: datetime
 
 
 class ForgetPassword(BaseModel):
