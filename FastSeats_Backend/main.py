@@ -18,7 +18,7 @@ frontend_url = os.getenv("FRONTEND_URL")
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://fast-seats-app-frontend.vercel.app/"
+        "https://fast-seats-app-frontend.vercel.app"
     ],
     allow_credentials=True,
     allow_methods=["*"],
