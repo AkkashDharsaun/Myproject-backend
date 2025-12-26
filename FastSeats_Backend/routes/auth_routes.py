@@ -18,16 +18,15 @@ def dashboard_login(data: LoginData, db: Session = Depends(get_db)):
         db.query(College).filter(College.collegeEmail == data.collegeEmail).first()
     )
 
-    if not college:
-        raise HTTPException(status_code=401, detail="Invalid credentials")
-
-    if not verify_password(data.password, college.password):
-        raise HTTPException(status_code=401, detail="Password is incorrect")
-
     if not college.is_active:
         raise HTTPException(
             status_code=403, detail="Account inactive. Payment required"
         )
+    if college and not verify_password(data.password, college.password):
+        raise HTTPException(status_code=401, detail="Password is incorrect")
+
+    if not college and not verify_password(data.password, college.password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
 
     return {
         "message": "Login successful",
